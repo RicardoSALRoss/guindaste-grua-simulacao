@@ -5,11 +5,11 @@ syms x dx ddx gamma dgamma ddgamma theta1 dtheta1 ddtheta1 phi1 dphi1 ddphi1 the
 rho   = sym(1.225);   
 Cd    = sym(1.2);     
 A     = sym(15.6); 
-vwind = sym(0);  
+vwind = sym(10);  
 
 %rT = [x*cos(gamma); x*sin(gamma); 0];
-%rm1 = rT  + [cos(gamma); sin(gamma); 0](l1*sin(theta1)*cos(phi1)) + [-sin(gamma); cos(gamma); 0](l1*sin(theta1)sin(phi1)) + [0; 0; 1](-l1*cos(theta1));
-%rm2 = rm1 + [cos(gamma); sin(gamma); 0](l2*sin(theta2)*cos(phi2)) + [-sin(gamma); cos(gamma); 0](l2*sin(theta2)sin(phi2)) + [0; 0; 1](-l2*cos(theta2));
+%rm1 = rT  + [cos(gamma); sin(gamma); 0]*(l1*sin(theta1)*cos(phi1)) + [-sin(gamma); cos(gamma); 0]*(l1*sin(theta1)*sin(phi1)) + [0; 0; 1]*(-l1*cos(theta1));
+%rm2 = rm1 + [cos(gamma); sin(gamma); 0]*(l2*sin(theta2)*cos(phi2)) + [-sin(gamma); cos(gamma); 0]*(l2*sin(theta2)*sin(phi2)) + [0; 0; 1]*(-l2*cos(theta2));
 
 rT = [x*cos(gamma); x*sin(gamma); 0];
 rm1 = rT  + [l1*sin(theta1)*cos(phi1); l1*sin(theta1)*sin(phi1); -l1*cos(theta1)];
@@ -29,15 +29,14 @@ V1 = m1 * g * (-l1*cos(theta1));
 V2 = m2 * g * (-l1*cos(theta1)-l2*cos(theta2));
 V = simplify(V1 + V2);
 
-R = 0.5*(simplify(76.8*((vrf2(1)^2))) + simplify(76.8*((vrf2(2)^2))) + simplify(76.8*((vrf2(3)^2))));
+%R = 0.5*(simplify(76.8*((vrf2(1)^2))) + simplify(76.8*((vrf2(2)^2))) + simplify(76.8*((vrf2(3)^2))));
 %R = 0;
 
 %vrel1 = [ vwind - vrf1(1) ; -vrf1(2) ; -vrf1(3) ];
 vrel2 = [ vwind - vrf2(1) ; -vrf2(2) ; -vrf2(3) ];
 
-
-Fd = simplify(0.5 * rho * Cd * A * vrel2 * norm(vrel));
-
+Fd = simplify(0.5 * rho * Cd * A * norm(vrel2) * vrel2);
+%sqrt(vrel2(1)^2 + vrel2(2)^2 + vrel2(3)^2)
 %vrel = [ vrf2(1) - vwind ; vrf2(2) ; vrf2(3) ];
 
 %vrel_sq = simplify(vrel.' * vrel);
@@ -46,10 +45,10 @@ L = simplify(T - V);
 s = [theta1; theta2; phi1; phi2];
 ds= [dtheta1; dtheta2; dphi1; dphi2];
 
-%d_v2d_dtheta1 = diff(vrf2, dtheta1);
-%d_v2d_dtheta2 = diff(vrf2, dtheta2);
-%d_v2d_dphi1 = diff(vrf2, dphi1);
-%d_v2d_dphi2 = diff(vrf2, dphi2);
+d_v2d_dtheta1 = diff(vrf2, dtheta1);
+d_v2d_dtheta2 = diff(vrf2, dtheta2);
+d_v2d_dphi1 = diff(vrf2, dphi1);
+d_v2d_dphi2 = diff(vrf2, dphi2);
 
 Q = sym(zeros(length(s),1));
 
@@ -67,7 +66,6 @@ Q(4) = simplify(Fd.' * d_v2d_dphi2);
 %Q(2) = Fd(1) * d_v2d_dtheta2(1) + Fd(2) * d_v2d_dtheta2(2) + Fd(3) * d_v2d_dtheta2(3);
 %Q(3) = Fd(1) * d_v2d_dphi1(1) + Fd(2) * d_v2d_dphi1(2) + Fd(3) * d_v2d_dphi1(3);
 %Q(4) = Fd(1) * d_v2d_dphi2(1) + Fd(2) * d_v2d_dphi2(2) + Fd(3) * d_v2d_dphi2(3);
-
 
 function f = EL(s,ds,L,Q)
 dds = str2sym( "d" + string(ds) );
@@ -91,9 +89,9 @@ ddphi2_fun   = matlabFunction(sol.ddphi2,   'Vars', [x, dx, gamma, dgamma, theta
 
 function dydt = d(~, y, ddtheta1_fun, ddtheta2_fun, ddphi1_fun, ddphi2_fun)
     l1 = 50;
-    l2 = 5;
+    l2 = 25;
     m1 = 100;
-    m2 = 24000;
+    m2 = 2000;
     g  = 9.8;
     
     x = y(1);
@@ -113,36 +111,38 @@ function dydt = d(~, y, ddtheta1_fun, ddtheta2_fun, ddphi1_fun, ddphi2_fun)
     ddtheta2 = ddtheta2_fun(x, dx, gamma, dgamma, theta1, dtheta1, theta2, dtheta2, phi1, dphi1, phi2, dphi2, l1, m1, m2, l2, g);
     ddphi1   =   ddphi1_fun(x, dx, gamma, dgamma, theta1, dtheta1, theta2, dtheta2, phi1, dphi1, phi2, dphi2, l1, m1, m2, l2, g);
     ddphi2   =   ddphi2_fun(x, dx, gamma, dgamma, theta1, dtheta1, theta2, dtheta2, phi1, dphi1, phi2, dphi2, l1, m1, m2, l2, g);
-    
+
     dydt = [dx; 0; dgamma; 0; dtheta1; ddtheta1; dtheta2; ddtheta2; dphi1; ddphi1; dphi2; ddphi2];
 end
 
-y0 = [40;%x
-      0;%dx
-      0;%gamma
-      0.1;%dgamma
-      pi/180;%theta1
+y0 = [10;%x
+      0.1;%dx
+      pi/4;%gamma
+      0;%dgamma
+      10^(-5);%theta1
       0;%dtheta1
-      pi/180;%theta2
+      10^(-5);%theta2
       0;%dtheta2
-      pi/180;%phi1
+      0;%phi1
       0;%dphi1
-      pi/180;%phi2
+      0;%phi2
       0];%dphi2
 
-tf      = 60;                       % Final time            [s]
+tf      = 300;                       % Final time            [s]
 fR      = 30;                       % Frame rate            [fps]
 dt      = 1/fR;                     % Time resolution       [s]
 tspan    = linspace(0,tf,tf*fR);     % Time                  [s]
 
-%tspan = [0 100];
+%tspan = [0 500];
 
-[t,y] = ode113(@(t,y) d(t, y, ddtheta1_fun, ddtheta2_fun, ddphi1_fun, ddphi2_fun), tspan, y0);
+[t,y] = ode78(@(t,y) d(t, y, ddtheta1_fun, ddtheta2_fun, ddphi1_fun, ddphi2_fun), tspan, y0);
+
 %y(isnan(y)) = 0;
 max_mod_col = max(abs(y));
 
+%{
 L1 = 50;
-L2 = 5;
+L2 = 25;
 
 XT = y(:,1).*cos(y(:,3));
 YT = y(:,1).*sin(y(:,3));
@@ -188,7 +188,8 @@ min_y = min(YP1)-50;
 max_y = max(YP1)+50;
 min_z = min(ZP1)-50;
 max_z = 100;
-figure
+f1 = figure;
+figure(f1);
 %set(gcf,'Position',[50 50 1920 1080]) % 1080p
 %set(gcf,'Position',[50 50 1280 720]) % 720p
 %set(gcf,'Position',[50 50 854 480]) % 480p
@@ -204,6 +205,7 @@ set(gca,'XLim',[min_x max_x])
 set(gca,'YLim',[min_y max_y])
 set(gca,'ZLim',[min_z max_z])
 set(gca,'XTickLabel',[],'YTickLabel',[],'ZTickLabel',[])
+
 for i = 1:length(XP1)
     
     cla
@@ -236,3 +238,58 @@ for i = 1:length(XP1)
 
 end
 close(v);
+%}
+
+f2 = figure;
+% Extrair os ângulos da matriz y
+theta1 = y(:,5);   % Ângulo theta1
+theta2 = y(:,7);   % Ângulo theta2
+phi1 = y(:,9);     % Ângulo phi1
+phi2 = y(:,11);    % Ângulo phi2
+
+save('dados_codigo1.mat', 't', 'theta1', 'theta2', 'phi1', 'phi2');
+
+% Plotar os ângulos em função do tempo
+figure(f2);
+subplot(2,2,1);
+plot(t, theta1, 'b-', 'LineWidth', 2, 'DisplayName', 'Modelo Não Linear');
+hold on;
+plot(t, 0.0775*exp(-0.055616095559472 * t) + 0.054876785277665, 'r--', 'LineWidth', 2, 'DisplayName', 'Exponencial');
+hold off;
+xlabel('Tempo (s)');
+ylabel('Theta2 (rad)');
+title('Análise do Decaimento Exponencial');
+legend('show');
+grid on;
+
+subplot(2,2,2);
+plot(t, theta2, 'b-', 'LineWidth', 2, 'DisplayName', 'Modelo Não Linear');
+hold on;
+plot(t, 0.0775*exp(-0.027850892232908 * t) + 0.057614700529080, 'r--', 'LineWidth', 2, 'DisplayName', 'Exponencial');
+hold off;
+xlabel('Tempo (s)');
+ylabel('Theta2 (rad)');
+title('Análise do Decaimento Exponencial');
+legend('show');
+grid on;
+
+
+subplot(2,2,3);
+plot(t, phi1);
+xlabel('Tempo (s)');
+ylabel('Phi1 (rad)');
+title('Ângulo Phi1');
+grid on;
+
+subplot(2,2,4);
+plot(t, phi2);
+xlabel('Tempo (s)');
+ylabel('Phi2 (rad)');
+title('Ângulo Phi2');
+grid on;
+
+% Ajustar o layout dos subplots
+sgtitle('Evolução dos Ângulos do Modelo Não Linearizado');
+
+
+
